@@ -16,8 +16,13 @@ const databaseConnection = {
   };
 const connection = new Pool(databaseConnection);
 
-app.get("/teste", (req,res) => {
-  console.log("hey");  
+app.get("/categories", async (req,res) => {
+    try{
+        const categories = await connection.query('SELECT * FROM categories');
+        res.send(categories.rows);
+    }catch{
+        res.sendStatus(400);
+    };
 });
 
 app.listen(4000, () =>{
