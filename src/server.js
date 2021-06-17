@@ -17,6 +17,9 @@ const databaseConnection = {
   };
 const connection = new Pool(databaseConnection);
 
+// início da rota categories
+
+//pega a array com as informações de categorias
 app.get("/categories", async (req,res) => {
     try{
         const categories = await connection.query('SELECT * FROM categories');
@@ -25,6 +28,8 @@ app.get("/categories", async (req,res) => {
         res.sendStatus(400);
     };
 });
+
+//insere uma nova categoria
 
 app.post("/categories", async (req,res) => {
     const { name } = req.body;
@@ -49,6 +54,11 @@ app.post("/categories", async (req,res) => {
     };
 });
 
+//fim da rota de categorias
+
+//inicio da rota de games
+//pega a array com as informações de games 
+
 app.get("/games", async (req,res) => {
     const { name } = req.query;
     try{
@@ -60,21 +70,20 @@ app.get("/games", async (req,res) => {
             games = await connection.query('SELECT * FROM games');
         }
         const categories = await connection.query('SELECT * FROM categories');
-        const categoriesList = categories.rows;
-        const gamesList = games.rows;
-        for(let i = 0; i < gamesList.length; i++){
-            for(let j = 0; j < categoriesList.length;j++){
-                if(gamesList[i]["categoryId"]){
-                    gamesList[i].categoryName = categoriesList[j].name;
+        for(let i = 0; i < games.rows.length; i++){
+            for(let j = 0; j < categories.rows.length;j++){
+                if(games.rows[i].categoryId === categories.rows[j].id){
+                    games.rows[i].categoryName = categories.rows[j].name;
                 }
             }
         }
-        res.send(gamesList);
-    }catch (e){
-        console.log(e);
+        res.send(games.rows);
+    }catch {
         res.sendStatus(400);
     };
 });
+
+//insere um novo jogo em games
 
 app.post("/games", async (req,res) => {
     const { name, image, stockTotal, categoryId, pricePerDay } = req.body;
@@ -108,6 +117,38 @@ app.post("/games", async (req,res) => {
         await connection.query('INSERT INTO games (name, image, "stockTotal", "categoryId", "pricePerDay") VALUES ($1, $2, $3, $4, $5)',[name, image, stockTotal, categoryId, pricePerDay]);
         res.sendStatus(201);
     } catch{
+        res.sendStatus(400);
+    };
+});
+
+//fim da rota games
+
+//início da rota de clientes
+//buscar informações dos clientes
+app.get("/customers", async (req,res) => {
+    const { cpf } = req.query;
+    if(cpf){
+        const userSchema = joi.object({
+            cpf: joi.number()
+        });
+        const { error, value } = userSchema.validate({
+            cpf: cpf
+        });
+        if(error){
+            res.sendStatus(400);
+            return;
+        }
+    }
+    try{
+        let costumers = []
+        if(cpf){
+            costumers = await connection.query('SELECT * FROM customers WHERE cpf LIKE $1', [cpf+"%"]);
+        }
+        else{
+            costumers = await connection.query('SELECT * FROM customers');
+        }
+        res.send(costumers.rows);
+    }catch {
         res.sendStatus(400);
     };
 });
