@@ -34,6 +34,7 @@ app.post("/categories", async (req,res) => {
     const { error, value } = userSchema.validate({name: name});
     if(error){
         res.sendStatus(400);
+        return;
     }
     try{
         const categorieValidation = await connection.query('SELECT * FROM categories WHERE name = $1',[name]);
@@ -41,11 +42,55 @@ app.post("/categories", async (req,res) => {
             res.sendStatus(409);
             return;
         }
-            await connection.query('INSERT INTO categories (name) VALUES ($1)',[name])
-            res.sendStatus(201);
-        }catch{
-            res.sendStatus(400);
-        };
+        await connection.query('INSERT INTO categories (name) VALUES ($1)',[name]);
+        res.sendStatus(201);
+    } catch{
+        res.sendStatus(400);
+    };
+});
+
+app.get("/games", async (req,res) => {
+    const { name } = req.query;
+    try{
+        let games = []
+        if(name){
+            games = await connection.query("SELECT * FROM games WHERE name COLLATE '$1%'", [name]);
+        }
+        else{
+            games = await connection.query('SELECT * FROM games');
+        }
+        const categories = await connection.query('SELECT * FROM categories');
+        for(let i = 0; i < categories.length; i++){
+            games.rows.map(n => n.categoryId === categories[i].id? n.categoryName = categories[i].name: null)
+        }
+        res.send(games.rows);
+    }catch (e){
+        res.sendStatus(400);
+    };
+});
+
+app.post("/games", async (req,res) => {
+    const { name, image, stockTotal, categoryId, pricePerDay } = req.body;
+    const userSchema = joi.object({
+        name: joi.string().min(1).required(),
+        
+    });
+    const { error, value } = userSchema.validate({name: name});
+    if(error){
+        res.sendStatus(400);
+        return;
+    }
+    try{
+        const categorieValidation = await connection.query('SELECT * FROM categories WHERE name = $1',[name]);
+        if(categorieValidation.rows[0]){
+            res.sendStatus(409);
+            return;
+        }
+        await connection.query('INSERT INTO categories (name) VALUES ($1)',[name]);
+        res.sendStatus(201);
+    } catch{
+        res.sendStatus(400);
+    };
 });
 
 app.listen(4000, () =>{
