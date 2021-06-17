@@ -245,6 +245,58 @@ app.put("/customers/:id", async (req,res) => {
 });
 //fim da rota customers
 
+//início da rota rentals
+app.get("/rentals", async (req,res) => {
+    const { costumerId, gameId } = req.params;
+    try{
+        if(costumerId){
+            const rentals = await connection.query(`
+                SELECT rentals.*, 
+                    customers.name AS "costumerName",
+                    games.*,
+                    categories.name AS "categoryName"
+                FROM rentals 
+                JOIN customers, games, categories
+                ON rentals."custumerId" = customers.id,
+                    rentals."gameId" = game.id,
+                    game."categoryId" = categories.id
+                WHERE rentals."customerId" LIKE $1`, [costumerId]
+            );
+            res.send(rentals.rows);
+        }
+        else if(gameId){
+            const rentals = await connection.query(`
+                SELECT rentals.*, 
+                    customers.name AS "costumerName",
+                    games.*,
+                    categories.name AS "categoryName"
+                FROM rentals 
+                JOIN customers, games, categories
+                ON rentals."custumerId" = customers.id,
+                    rentals."gameId" = game.id,
+                    game."categoryId" = categories.id
+                WHERE rentals."gameId" ILIKE $1`, [gameId]
+            );
+            res.send(rentals.rows);
+            return;
+        }
+        const rentals = await connection.query(`
+            SELECT rentals.*, customers.name AS "costumerName", games.*, categories.name AS "categoryName"
+            FROM rentals 
+            JOIN (customers, games, categories)
+            ON (rentals."custumerId" = customers.id AND rentals."gameId" = game.id AND game."categoryId" = categories.id)
+        `);
+        res.send(rentals.rows);
+    }catch (e){
+        console.log(e);
+        res.sendStatus(400);
+    };
+});
+
+
+//fim da rota rentals
+
+
 app.listen(4000, () =>{
     console.log("Porta 4000!");
 });
