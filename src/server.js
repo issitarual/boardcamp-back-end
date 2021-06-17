@@ -29,7 +29,7 @@ app.get("/categories", async (req,res) => {
 app.post("/categories", async (req,res) => {
     const { name } = req.body;
     const userSchema = joi.object({
-        name: joi.string().min(1).required(),
+        name: joi.string().min(1).required().pattern(/[a-zA-Z]/),
     });
     const { error, value } = userSchema.validate({name: name});
     if(error){
@@ -54,7 +54,7 @@ app.get("/games", async (req,res) => {
     try{
         let games = []
         if(name){
-            games = await connection.query("SELECT * FROM games WHERE name COLLATE '$1%'", [name]);
+            games = await connection.query('SELECT * FROM games WHERE name ILIKE $1', [name+"%"]);
         }
         else{
             games = await connection.query('SELECT * FROM games');
@@ -64,7 +64,7 @@ app.get("/games", async (req,res) => {
             games.rows.map(n => n.categoryId === categories[i].id? n.categoryName = categories[i].name: null)
         }
         res.send(games.rows);
-    }catch (e){
+    }catch {
         res.sendStatus(400);
     };
 });
@@ -72,21 +72,33 @@ app.get("/games", async (req,res) => {
 app.post("/games", async (req,res) => {
     const { name, image, stockTotal, categoryId, pricePerDay } = req.body;
     const userSchema = joi.object({
-        name: joi.string().min(1).required(),
-        
+        name: joi.string().min(1).required().pattern(/[a-zA-Z]/),
+        stockTotal: joi.number().min(1).required(),
+        pricePerDay: joi.number().min(1).required(),
+        categoryId: joi.number().min(1).required()
     });
-    const { error, value } = userSchema.validate({name: name});
+    const { error, value } = userSchema.validate({
+        name: name, 
+        stockTotal: stockTotal, 
+        pricePerDay: pricePerDay,
+        categoryId: categoryId
+    });
     if(error){
         res.sendStatus(400);
         return;
     }
     try{
-        const categorieValidation = await connection.query('SELECT * FROM categories WHERE name = $1',[name]);
-        if(categorieValidation.rows[0]){
+        const gameValidation = await connection.query('SELECT * FROM games WHERE name = $1',[name]);
+        const categorieValidation = await connection.query('SELECT * FROM categories WHERE id = $1',[categoryId]);
+        if(gameValidation.rows[0]){
             res.sendStatus(409);
             return;
         }
-        await connection.query('INSERT INTO categories (name) VALUES ($1)',[name]);
+        else if(!categorieValidation.rows[0]){
+            res.sendStatus(400);
+            return;
+        }
+        await connection.query('INSERT INTO games (name, image, "stockTotal", "categoryId", "pricePerDay") VALUES ($1, $2, $3, $4, $5)',[name, image, stockTotal, categoryId, pricePerDay]);
         res.sendStatus(201);
     } catch{
         res.sendStatus(400);
