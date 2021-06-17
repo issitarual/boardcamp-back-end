@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import pg from 'pg';
 import joi from 'joi';
+import dayjs from 'dayjs';
 
 const app = express();
 app.use(cors());
@@ -149,7 +150,6 @@ app.get("/customers", async (req,res) => {
 
 //buscar cliente pelo id
 app.get("/customers/:id", async (req,res) => {
-
     const { id } = req.params;
     if(id){
         const userSchema = joi.object({
@@ -171,6 +171,42 @@ app.get("/customers/:id", async (req,res) => {
         }
         res.send(customers.rows[0]);
     }catch {
+        res.sendStatus(400);
+    };
+});
+
+//insere um novo cliente
+app.post("/customers", async (req,res) => {
+    const { name, phone, cpf, birthday } = req.body;
+    const userSchema = joi.object({
+        name: joi.string().min(1).required().pattern(/[a-zA-Z]/),
+        phone: joi.string().required().pattern(/[0-9]{10,11}/),
+        cpf: joi.string().required().pattern(/[0-9]{11}/),
+        birthday: joi.string().required().pattern(/^[0-9]{4}\-[0-9]{2}\-[0-9]{2}$/)
+    });
+    const { error, value } = userSchema.validate({
+        name: name, 
+        phone: phone,
+        cpf: cpf,
+        birthday:birthday
+    });
+    const birthdayValidation = dayjs(birthday, 'YYYY-MM-DD').isValid();
+    if(error || !birthdayValidation){
+        res.sendStatus(400);
+        return;
+    }
+    try{
+        console.log("aqui")
+        const cpfValidation = await connection.query('SELECT * FROM customers WHERE cpf = $1',[cpf]);
+        if(cpfValidation.rows[0]){
+            res.sendStatus(409);
+            return;
+        }
+        console.log("aqui")
+        await connection.query('INSERT INTO customers (name, phone, cpf, birthday) VALUES ($1, $2, $3, $4)',[name, phone, cpf, birthday]);
+        console.log("aqui")
+        res.sendStatus(201);
+    } catch{
         res.sendStatus(400);
     };
 });
