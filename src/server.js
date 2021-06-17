@@ -61,18 +61,17 @@ app.get("/games", async (req,res) => {
     try{
         let games = []
         if(name){
-            games = await connection.query('SELECT * FROM games WHERE name ILIKE $1', [name+"%"]);
+            games = await connection.query(`
+                SELECT games.*, categories.name AS "categoryName"
+                FROM games JOIN categories
+                ON games."categoryId" = categories.id
+                WHERE name ILIKE $1`, [name+"%"]);
         }
         else{
-            games = await connection.query('SELECT * FROM games');
-        }
-        const categories = await connection.query('SELECT * FROM categories');
-        for(let i = 0; i < games.rows.length; i++){
-            for(let j = 0; j < categories.rows.length;j++){
-                if(games.rows[i].categoryId === categories.rows[j].id){
-                    games.rows[i].categoryName = categories.rows[j].name;
-                }
-            }
+            games = await connection.query(`
+                SELECT games.*, categories.name AS "categoryName"
+                FROM games JOIN categories
+                ON games."categoryId" = categories.id`);
         }
         res.send(games.rows);
     }catch {
