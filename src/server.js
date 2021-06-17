@@ -60,11 +60,18 @@ app.get("/games", async (req,res) => {
             games = await connection.query('SELECT * FROM games');
         }
         const categories = await connection.query('SELECT * FROM categories');
-        for(let i = 0; i < categories.length; i++){
-            games.rows.map(n => n.categoryId === categories[i].id? n.categoryName = categories[i].name: null)
+        const categoriesList = categories.rows;
+        const gamesList = games.rows;
+        for(let i = 0; i < gamesList.length; i++){
+            for(let j = 0; j < categoriesList.length;j++){
+                if(gamesList[i]["categoryId"]){
+                    gamesList[i].categoryName = categoriesList[j].name;
+                }
+            }
         }
-        res.send(games.rows);
-    }catch {
+        res.send(gamesList);
+    }catch (e){
+        console.log(e);
         res.sendStatus(400);
     };
 });
