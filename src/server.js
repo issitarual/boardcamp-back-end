@@ -18,7 +18,6 @@ const databaseConnection = {
 const connection = new Pool(databaseConnection);
 
 // início da rota categories
-
 //pega a array com as informações de categorias
 app.get("/categories", async (req,res) => {
     try{
@@ -30,7 +29,6 @@ app.get("/categories", async (req,res) => {
 });
 
 //insere uma nova categoria
-
 app.post("/categories", async (req,res) => {
     const { name } = req.body;
     const userSchema = joi.object({
@@ -53,12 +51,10 @@ app.post("/categories", async (req,res) => {
         res.sendStatus(400);
     };
 });
-
 //fim da rota de categorias
 
 //inicio da rota de games
 //pega a array com as informações de games 
-
 app.get("/games", async (req,res) => {
     const { name } = req.query;
     try{
@@ -84,7 +80,6 @@ app.get("/games", async (req,res) => {
 });
 
 //insere um novo jogo em games
-
 app.post("/games", async (req,res) => {
     const { name, image, stockTotal, categoryId, pricePerDay } = req.body;
     const userSchema = joi.object({
@@ -120,7 +115,6 @@ app.post("/games", async (req,res) => {
         res.sendStatus(400);
     };
 });
-
 //fim da rota games
 
 //início da rota de clientes
@@ -148,6 +142,34 @@ app.get("/customers", async (req,res) => {
             costumers = await connection.query('SELECT * FROM customers');
         }
         res.send(costumers.rows);
+    }catch {
+        res.sendStatus(400);
+    };
+});
+
+//buscar cliente pelo id
+app.get("/customers/:id", async (req,res) => {
+
+    const { id } = req.params;
+    if(id){
+        const userSchema = joi.object({
+            id: joi.number().min(1)
+        });
+        const { error, value } = userSchema.validate({
+            id: id
+        });
+        if(error){
+            res.sendStatus(400);
+            return;
+        }
+    }
+    try{
+        const customers = await connection.query('SELECT * FROM customers WHERE id = $1', [id]);
+        if(!customers.rows[0]){
+            res.sendStatus(404);
+            return;
+        }
+        res.send(customers.rows[0]);
     }catch {
         res.sendStatus(400);
     };
