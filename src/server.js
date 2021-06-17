@@ -32,25 +32,20 @@ app.post("/categories", async (req,res) => {
         name: joi.string().min(1).required(),
     });
     const { error, value } = userSchema.validate({name: name});
-    if(value.name){
-        try{
-            const categorieValidation = await connection.query('SELECT * FROM categories WHERE name = $1',[name]);
-            if(categorieValidation.rows[0]){
-                res.sendStatus(409);
-                return;
-            }
-            else{
-                await connection.query('INSERT INTO categories (name) VALUES ($1)',[name])
-                res.sendStatus(201);
-                return;
-            }
+    if(error){
+        res.sendStatus(400);
+    }
+    try{
+        const categorieValidation = await connection.query('SELECT * FROM categories WHERE name = $1',[name]);
+        if(categorieValidation.rows[0]){
+            res.sendStatus(409);
+            return;
+        }
+            await connection.query('INSERT INTO categories (name) VALUES ($1)',[name])
+            res.sendStatus(201);
         }catch{
             res.sendStatus(400);
         };
-    }
-    else if(error){
-        res.sendStatus(400);
-    }
 });
 
 app.listen(4000, () =>{
