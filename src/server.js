@@ -142,6 +142,9 @@ app.get("/customers", async (req,res) => {
         else{
             costumers = await connection.query('SELECT * FROM customers');
         }
+        for(let i = 0; i < costumers.rows.length; i++){
+            costumers.rows[i].birthday = dayjs(costumers.rows[i].birthday).format('YYYY-MM-DD');
+        }
         res.send(costumers.rows);
     }catch {
         res.sendStatus(400);
