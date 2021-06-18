@@ -263,13 +263,13 @@ app.get("/rentals", async (req,res) => {
                 return;
             }
             rentals = await connection.query(`
-                SELECT rentals.*, customers.name AS "customerName", games.*,  categories.name AS "categoryName"
+                SELECT rentals.*, customers.name AS "customerName", games.name AS "gameName", games."categoryId", categories.name AS "categoryName"
                 FROM rentals 
-                INNER JOIN customers
+                JOIN customers
                 ON rentals."customerId" = customers.id 
-                INNER JOIN games
+                JOIN games
                 ON rentals."gameId" = games.id 
-                INNER JOIN categories
+                JOIN categories
                 ON games."categoryId" = categories.id
                 WHERE rentals."customerId" LIKE $1`, [customerId]
             );
@@ -283,26 +283,26 @@ app.get("/rentals", async (req,res) => {
                 return;
             }
             rentals = await connection.query(`
-                SELECT rentals.*, customers.name AS "customerName", games.*,  categories.name AS "categoryName"
+                SELECT rentals.*, customers.name AS "customerName", games.name AS "gameName", games."categoryId", categories.name AS "categoryName"
                 FROM rentals 
-                INNER JOIN customers
+                JOIN customers
                 ON rentals."customerId" = customers.id 
-                INNER JOIN games
+                JOIN games
                 ON rentals."gameId" = games.id 
-                INNER JOIN categories
+                JOIN categories
                 ON games."categoryId" = categories.id
                 WHERE rentals."gameId" ILIKE $1`, [gameId]
             );
         }
         else{
             rentals = await connection.query(`
-                SELECT rentals.*, customers.name AS "customerName", games.*,  categories.name AS "categoryName"
+                SELECT rentals.*, customers.name AS "customerName", games.name AS "gameName", games."categoryId", categories.name AS "categoryName"
                 FROM rentals 
-                INNER JOIN customers
+                JOIN customers
                 ON rentals."customerId" = customers.id 
-                INNER JOIN games
+                JOIN games
                 ON rentals."gameId" = games.id 
-                INNER JOIN categories
+                JOIN categories
                 ON games."categoryId" = categories.id
             `);
         }
@@ -318,7 +318,7 @@ app.get("/rentals", async (req,res) => {
                 originalPrice,
                 delayFee,
                 customerName,
-                name,
+                gameName,
                 categoryId,
                 categoryName                
             } = rentals.rows[i]
@@ -328,7 +328,7 @@ app.get("/rentals", async (req,res) => {
                 gameId: gameId,
                 rentDate: dayjs(rentDate).format('YYYY-MM-DD'),
                 daysRented: daysRented,
-                returnDate: returnDate,
+                returnDate: returnDate?dayjs(returnDate).format('YYYY-MM-DD'): returnDate,
                 originalPrice: originalPrice,
                 delayFee: delayFee,
                 customer: {
@@ -337,7 +337,7 @@ app.get("/rentals", async (req,res) => {
                 },
                 game: {
                     id: gameId,
-                    name: name,
+                    name: gameName,
                     categoryId: categoryId,
                     categoryName: categoryName
                 }
@@ -421,8 +421,8 @@ app.post("/rentals/:id/return", async (req,res) => {
         }
         const rentDate = dayjs(validation.rows[0].rentDate);
         const today = dayjs();
-        const delay = today.diff(rentDate, 'day');
-        const delayFee =  delay > 0? delay * validation.rows[0].originalPrice: null;
+        const difference = today.diff(rentDate, 'day');
+        const delayFee =  difference > validation.rows[0].daysRented? (difference-validation.rows[0].daysRented) * validation.rows[0].originalPrice: null;
         await connection.query('UPDATE rentals SET "returnDate" = $1, "delayFee" = $2 WHERE id = $3',[dayjs().format('YYYY-MM-DD'), delayFee ,id]);
         res.sendStatus(200);
     } catch{
