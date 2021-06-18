@@ -21,11 +21,14 @@ const connection = new Pool(databaseConnection);
 // início da rota categories
 //pega a array com as informações de categorias
 app.get("/categories", async (req,res) => {
-    const { offset, limit } = req.query;
+    const { offset, limit, order, desc } = req.query;
     try{
-        const categories = await connection.query('SELECT * FROM categories LIMIT $1 OFFSET $2', [limit? limit:null, offset? offset:0]);
+        const categories = await connection.query(`
+            SELECT * 
+            FROM categories 
+            LIMIT $1 OFFSET $2`, [limit? limit:null, offset? offset:0]);
         res.send(categories.rows);
-    }catch{
+    }catch {
         res.sendStatus(400);
     };
 });
