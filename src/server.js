@@ -306,8 +306,45 @@ app.get("/rentals", async (req,res) => {
                 ON games."categoryId" = categories.id
             `);
         }
-        //TESTAR E FAZER ARRAY BONITA
-        res.send(rentals.rows);
+        let rentList = [];
+        for(let i = 0; i < rentals.rows.length; i++){
+            const {
+                id,
+                customerId,
+                gameId,
+                rentDate,
+                daysRented,
+                returnDate,
+                originalPrice,
+                delayFee,
+                customerName,
+                name,
+                categoryId,
+                categoryName                
+            } = rentals.rows[i]
+            const data = {
+                id: id,
+                customerId: customerId,
+                gameId: gameId,
+                rentDate: dayjs(rentDate).format('YYYY-MM-DD'),
+                daysRented: daysRented,
+                returnDate: returnDate,
+                originalPrice: originalPrice,
+                delayFee: delayFee,
+                customer: {
+                    id: customerId,
+                    name: customerName
+                },
+                game: {
+                    id: gameId,
+                    name: name,
+                    categoryId: categoryId,
+                    categoryName: categoryName
+                }
+            }
+            rentList.push(data);
+        }
+        res.send(rentList);
     }catch (e){
         console.log(e);
         res.sendStatus(400);
