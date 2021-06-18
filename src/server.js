@@ -21,8 +21,9 @@ const connection = new Pool(databaseConnection);
 // início da rota categories
 //pega a array com as informações de categorias
 app.get("/categories", async (req,res) => {
+    const { offset, limit } = req.query;
     try{
-        const categories = await connection.query('SELECT * FROM categories');
+        const categories = await connection.query('SELECT * FROM categories LIMIT $1 OFFSET $2', [limit? limit:null, offset? offset:0]);
         res.send(categories.rows);
     }catch{
         res.sendStatus(400);
@@ -57,7 +58,7 @@ app.post("/categories", async (req,res) => {
 //inicio da rota de games
 //pega a array com as informações de games 
 app.get("/games", async (req,res) => {
-    const { name } = req.query;
+    const { name, offset, limit } = req.query;
     try{
         let games = []
         if(name){
@@ -65,13 +66,15 @@ app.get("/games", async (req,res) => {
                 SELECT games.*, categories.name AS "categoryName"
                 FROM games JOIN categories
                 ON games."categoryId" = categories.id
-                WHERE name ILIKE $1`, [name+"%"]);
+                WHERE name ILIKE $1
+                LIMIT $2 OFFSET $3`, [name+"%", limit? limit:null, offset? offset:0]);
         }
         else{
             games = await connection.query(`
                 SELECT games.*, categories.name AS "categoryName"
                 FROM games JOIN categories
-                ON games."categoryId" = categories.id`);
+                ON games."categoryId" = categories.id
+                LIMIT $1 OFFSET $2`, [limit? limit:null, offset? offset:0]);
         }
         res.send(games.rows);
     }catch {
@@ -120,7 +123,7 @@ app.post("/games", async (req,res) => {
 //início da rota de clientes
 //buscar informações dos clientes
 app.get("/customers", async (req,res) => {
-    const { cpf } = req.query;
+    const { cpf, limit, offset } = req.query;
     if(cpf){
         const userSchema = joi.object({
             cpf: joi.number()
@@ -136,10 +139,10 @@ app.get("/customers", async (req,res) => {
     try{
         let customers = []
         if(cpf){
-            customers = await connection.query('SELECT * FROM customers WHERE cpf LIKE $1', [cpf+"%"]);
+            customers = await connection.query('SELECT * FROM customers WHERE cpf LIKE $1 LIMIT $2 OFFSET $3', [cpf+"%", limit? limit:null, offset? offset:0]);
         }
         else{
-            customers = await connection.query('SELECT * FROM customers');
+            customers = await connection.query('SELECT * FROM customers LIMIT $1 OFFSET $2',[limit? limit:null, offset? offset:0]);
         }
         for(let i = 0; i < customers.rows.length; i++){
             customers.rows[i].birthday = dayjs(customers.rows[i].birthday).format('YYYY-MM-DD');
@@ -249,6 +252,7 @@ app.put("/customers/:id", async (req,res) => {
 //pega as informações dos alugueis
 app.get("/rentals", async (req,res) => {
     const { customerId, gameId } = req.params;
+    const { limit, offset } = req.query;
     const userSchema = joi.object({
         id: joi.number().min(1).required()
     });
@@ -271,7 +275,8 @@ app.get("/rentals", async (req,res) => {
                 ON rentals."gameId" = games.id 
                 JOIN categories
                 ON games."categoryId" = categories.id
-                WHERE rentals."customerId" LIKE $1`, [customerId]
+                WHERE rentals."customerId" LIKE $1 
+                LIMIT $2 OFFSET $3`, [customerId, limit? limit:null, offset? offset:0]
             );
         }
         else if(gameId){
@@ -291,7 +296,8 @@ app.get("/rentals", async (req,res) => {
                 ON rentals."gameId" = games.id 
                 JOIN categories
                 ON games."categoryId" = categories.id
-                WHERE rentals."gameId" ILIKE $1`, [gameId]
+                WHERE rentals."gameId" ILIKE $1 
+                LIMIT $2 OFFSET $3`, [gameId, limit? limit:null, offset? offset:0]
             );
         }
         else{
@@ -304,7 +310,8 @@ app.get("/rentals", async (req,res) => {
                 ON rentals."gameId" = games.id 
                 JOIN categories
                 ON games."categoryId" = categories.id
-            `);
+                LIMIT $1 OFFSET $2`,[limit? limit:null, offset? offset:0]
+            );
         }
         let rentList = [];
         for(let i = 0; i < rentals.rows.length; i++){
