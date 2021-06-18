@@ -419,10 +419,10 @@ app.post("/rentals/:id/return", async (req,res) => {
             res.sendStatus(400);
             return;
         }
-        const rentDate = dayjs(validation.rows[0].rentDate).format('DD');
-        const today = dayjs().format('DD');
-        const delay = parseInt(rentDate) - parseInt(today);
-        const delayFee =  delay > 1? delay * validation.rows[0].originalPrice: null;
+        const rentDate = dayjs(validation.rows[0].rentDate);
+        const today = dayjs();
+        const delay = today.diff(rentDate, 'day');
+        const delayFee =  delay > 0? delay * validation.rows[0].originalPrice: null;
         await connection.query('UPDATE rentals SET "returnDate" = $1, "delayFee" = $2 WHERE id = $3',[dayjs().format('YYYY-MM-DD'), delayFee ,id]);
         res.sendStatus(200);
     } catch{
@@ -431,7 +431,36 @@ app.post("/rentals/:id/return", async (req,res) => {
 });
 
 //deleta um aluguel
-
+app.delete("/rentals/:id", async (req,res) => {
+    const { id } = req.params;
+    
+    const userSchema = joi.object({
+        id: joi.number().min(1)
+    });
+    const { error, value } = userSchema.validate({
+        id: id
+    });
+    if(error){
+        res.sendStatus(400);
+        return;
+    }
+    
+    try{
+        const validation = await connection.query('SELECT * FROM rentals WHERE id = $1',[id]);
+        if(!validation.rows[0]){
+            res.sendStatus(404);
+            return;
+        }
+        else if(validation.rows[0].returnDate){
+            res.sendStatus(400);
+            return;
+        }
+        await connection.query('DELETE FROM rentals WHERE id = $1',[id]);
+        res.sendStatus(200);
+    } catch{
+        res.sendStatus(400);
+    };
+});
 //fim da rota rentals
 
 app.listen(4000, () =>{
