@@ -249,38 +249,62 @@ app.put("/customers/:id", async (req,res) => {
 //pega as informações dos alugueis
 app.get("/rentals", async (req,res) => {
     const { customerId, gameId } = req.params;
-    //validar ids!
+    const userSchema = joi.object({
+        id: joi.number().min(1).required()
+    });
     try{
         let rentals = []
         if(customerId){
+            const { error, value } = userSchema.validate({
+                id: customerId
+            });
+            if(error){
+                res.sendStatus(400);
+                return;
+            }
             rentals = await connection.query(`
-                SELECT rentals.*, customers.name AS "customerName", games.*, categories.name AS "categoryName"
+                SELECT rentals.*, customers.name AS "customerName", games.*,  categories.name AS "categoryName"
                 FROM rentals 
-                JOIN (customers, games, categories)
-                ON (rentals."custumerId" = customers.id AND rentals."gameId" = game.id AND game."categoryId" = categories.id)
+                INNER JOIN customers
+                ON rentals."customerId" = customers.id 
+                INNER JOIN games
+                ON rentals."gameId" = games.id 
+                INNER JOIN categories
+                ON games."categoryId" = categories.id
                 WHERE rentals."customerId" LIKE $1`, [customerId]
             );
         }
         else if(gameId){
+            const { error, value } = userSchema.validate({
+                id: gameId
+            });
+            if(error){
+                res.sendStatus(400);
+                return;
+            }
             rentals = await connection.query(`
-                SELECT rentals.*, customers.name AS "customerName", games.*, categories.name AS "categoryName"
+                SELECT rentals.*, customers.name AS "customerName", games.*,  categories.name AS "categoryName"
                 FROM rentals 
-                JOIN (customers, games, categories)
-                ON (rentals."custumerId" = customers.id AND rentals."gameId" = game.id AND game."categoryId" = categories.id)
+                INNER JOIN customers
+                ON rentals."customerId" = customers.id 
+                INNER JOIN games
+                ON rentals."gameId" = games.id 
+                INNER JOIN categories
+                ON games."categoryId" = categories.id
                 WHERE rentals."gameId" ILIKE $1`, [gameId]
             );
         }
         else{
             rentals = await connection.query(`
-                SELECT rentals.*, customers.name AS "customerName"
+                SELECT rentals.*, customers.name AS "customerName", games.*,  categories.name AS "categoryName"
                 FROM rentals 
-                JOIN customers
-                ON (rentals."customerId" = customers.id)
+                INNER JOIN customers
+                ON rentals."customerId" = customers.id 
+                INNER JOIN games
+                ON rentals."gameId" = games.id 
+                INNER JOIN categories
+                ON games."categoryId" = categories.id
             `);
-            /* SELECT rentals.*, customers.name AS "customerName", games.*, categories.name AS "categoryName"
-                FROM rentals 
-                JOIN (customers, games, categories)
-                ON (rentals."custumerId" = customers.id AND rentals."gameId" = game.id AND game."categoryId" = categories.id) */
         }
         //TESTAR E FAZER ARRAY BONITA
         res.send(rentals.rows);
