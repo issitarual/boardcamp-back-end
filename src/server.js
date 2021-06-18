@@ -66,7 +66,7 @@ app.get("/games", async (req,res) => {
                 SELECT games.*, categories.name AS "categoryName"
                 FROM games JOIN categories
                 ON games."categoryId" = categories.id
-                WHERE name ILIKE $1
+                WHERE games.name ILIKE $1
                 LIMIT $2 OFFSET $3`, [name+"%", limit? limit:null, offset? offset:0]);
         }
         else{
@@ -77,7 +77,8 @@ app.get("/games", async (req,res) => {
                 LIMIT $1 OFFSET $2`, [limit? limit:null, offset? offset:0]);
         }
         res.send(games.rows);
-    }catch {
+    }catch (e){
+        console.log(e);
         res.sendStatus(400);
     };
 });
