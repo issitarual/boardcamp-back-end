@@ -134,17 +134,17 @@ app.get("/customers", async (req,res) => {
         }
     }
     try{
-        let costumers = []
+        let customers = []
         if(cpf){
-            costumers = await connection.query('SELECT * FROM customers WHERE cpf LIKE $1', [cpf+"%"]);
+            customers = await connection.query('SELECT * FROM customers WHERE cpf LIKE $1', [cpf+"%"]);
         }
         else{
-            costumers = await connection.query('SELECT * FROM customers');
+            customers = await connection.query('SELECT * FROM customers');
         }
-        for(let i = 0; i < costumers.rows.length; i++){
-            costumers.rows[i].birthday = dayjs(costumers.rows[i].birthday).format('YYYY-MM-DD');
+        for(let i = 0; i < customers.rows.length; i++){
+            customers.rows[i].birthday = dayjs(customers.rows[i].birthday).format('YYYY-MM-DD');
         }
-        res.send(costumers.rows);
+        res.send(customers.rows);
     }catch {
         res.sendStatus(400);
     };
@@ -246,46 +246,39 @@ app.put("/customers/:id", async (req,res) => {
 //fim da rota customers
 
 //início da rota rentals
+//pega as informações dos alugueis
 app.get("/rentals", async (req,res) => {
-    const { costumerId, gameId } = req.params;
+    const { customerId, gameId } = req.params;
+    //validar ids!
     try{
-        if(costumerId){
-            const rentals = await connection.query(`
-                SELECT rentals.*, 
-                    customers.name AS "costumerName",
-                    games.*,
-                    categories.name AS "categoryName"
+        let rentals = []
+        if(customerId){
+            rentals = await connection.query(`
+                SELECT rentals.*, customers.name AS "customerName", games.*, categories.name AS "categoryName"
                 FROM rentals 
-                JOIN customers, games, categories
-                ON rentals."custumerId" = customers.id,
-                    rentals."gameId" = game.id,
-                    game."categoryId" = categories.id
-                WHERE rentals."customerId" LIKE $1`, [costumerId]
+                JOIN (customers, games, categories)
+                ON (rentals."custumerId" = customers.id AND rentals."gameId" = game.id AND game."categoryId" = categories.id)
+                WHERE rentals."customerId" LIKE $1`, [customerId]
             );
-            res.send(rentals.rows);
         }
         else if(gameId){
-            const rentals = await connection.query(`
-                SELECT rentals.*, 
-                    customers.name AS "costumerName",
-                    games.*,
-                    categories.name AS "categoryName"
+            rentals = await connection.query(`
+                SELECT rentals.*, customers.name AS "customerName", games.*, categories.name AS "categoryName"
                 FROM rentals 
-                JOIN customers, games, categories
-                ON rentals."custumerId" = customers.id,
-                    rentals."gameId" = game.id,
-                    game."categoryId" = categories.id
+                JOIN (customers, games, categories)
+                ON (rentals."custumerId" = customers.id AND rentals."gameId" = game.id AND game."categoryId" = categories.id)
                 WHERE rentals."gameId" ILIKE $1`, [gameId]
             );
-            res.send(rentals.rows);
-            return;
         }
-        const rentals = await connection.query(`
-            SELECT rentals.*, customers.name AS "costumerName", games.*, categories.name AS "categoryName"
-            FROM rentals 
-            JOIN (customers, games, categories)
-            ON (rentals."custumerId" = customers.id AND rentals."gameId" = game.id AND game."categoryId" = categories.id)
-        `);
+        else{
+            rentals = await connection.query(`
+                SELECT rentals.*, customers.name AS "customerName", games.*, categories.name AS "categoryName"
+                FROM rentals 
+                JOIN (customers, games, categories)
+                ON (rentals."custumerId" = customers.id AND rentals."gameId" = game.id AND game."categoryId" = categories.id)
+            `);
+        }
+        //TESTAR E FAZER ARRAY BONITA
         res.send(rentals.rows);
     }catch (e){
         console.log(e);
@@ -293,9 +286,54 @@ app.get("/rentals", async (req,res) => {
     };
 });
 
+//adiciona um novo aluguel
+app.post("/rentals", async (req,res) => {
+    const { customerId, gameId, daysRented } = req.body;
+    const userSchema = joi.object({
+        customerId: joi.number().min(1).required(),
+        gameId: joi.number().min(1).required(),
+        daysRented: joi.number().min(1).required(),
+    });
+    const { error, value } = userSchema.validate({
+        customerId: customerId, 
+        gameId: gameId,
+        daysRented: daysRented,
+    });
+    if(error){
+        res.sendStatus(400);
+    }
+    const rentDate = dayjs().format('YYYY-MM-DD');
+    try{
+        const game = await connection.query(`
+            SELECT games.*, customers.id AS "customerId" 
+            FROM games JOIN customers
+            ON games.id = $1 AND customers.id = $2
+            `,[gameId, customerId]);
+        const stockValidation = game.rows[0].stockTotal < 1;
+        const existGameValidation = !game.rows[0].id;
+        const customerValidation = !game.rows[0].customerId;
+
+        if(stockValidation || existGameValidation || customerValidation){
+            sendStatus(400);
+            return;
+        }
+
+        const returnDate = null;
+        const delayFee = null
+        const originalPrice = daysRented * game.rows[0].pricePerDay;
+        await connection.query('INSERT INTO rentals ("customerId", "gameId", "rentDate", "daysRented", "returnDate", "originalPrice", "delayFee") VALUES ($1, $2, $3, $4, $5, $6, $7)',[customerId, gameId, rentDate, daysRented, returnDate, originalPrice, delayFee]);
+        res.sendStatus(201);
+    }catch (e){
+        console.log(e);
+        res.sendStatus(400);
+    };
+});
+
+//modifica um aluguel
+
+//deleta um aluguel
 
 //fim da rota rentals
-
 
 app.listen(4000, () =>{
     console.log("Porta 4000!");
