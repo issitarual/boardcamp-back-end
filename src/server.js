@@ -272,11 +272,15 @@ app.get("/rentals", async (req,res) => {
         }
         else{
             rentals = await connection.query(`
-                SELECT rentals.*, customers.name AS "customerName", games.*, categories.name AS "categoryName"
+                SELECT rentals.*, customers.name AS "customerName"
+                FROM rentals 
+                JOIN customers
+                ON (rentals."customerId" = customers.id)
+            `);
+            /* SELECT rentals.*, customers.name AS "customerName", games.*, categories.name AS "categoryName"
                 FROM rentals 
                 JOIN (customers, games, categories)
-                ON (rentals."custumerId" = customers.id AND rentals."gameId" = game.id AND game."categoryId" = categories.id)
-            `);
+                ON (rentals."custumerId" = customers.id AND rentals."gameId" = game.id AND game."categoryId" = categories.id) */
         }
         //TESTAR E FAZER ARRAY BONITA
         res.send(rentals.rows);
